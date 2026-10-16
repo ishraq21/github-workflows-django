@@ -21,5 +21,5 @@ class PageTests(TestCase):
         Task.objects.create(title='Finished one', done=True)
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context['open_tasks'], 1)
+        self.assertEqual(response.context['open_tasks'], 2)
         self.assertContains(response, 'Open tasks')

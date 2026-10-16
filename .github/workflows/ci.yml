@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new push to a pull request cancels that pull request's older run.
+# Every other run gets a group of its own, so nothing cancels it.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Throwaway values. CI only ever talks to a throwaway database.
+      SECRET_KEY: ci-only-not-a-real-secret
+      DATABASE_URL: postgresql://postgres:ci-password@localhost:5432/app
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check for missing migrations
+        run: python manage.py makemigrations --check --dry-run
+
+      - name: Run Django's system checks
+        run: python manage.py check
+
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput
+
+      - name: Run the tests
+        run: python manage.py test
+
+  docker:
+    name: Docker smoke test
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Write a throwaway env file
+        run: |
+          cat > .env <<'ENV'
+          SECRET_KEY=ci-only-not-a-real-secret
+          POSTGRES_PASSWORD=ci-password
+          ALLOWED_HOSTS=localhost
+          ENV
+
+      - name: Build and start the stack
+        run: docker compose up --build --wait --wait-timeout 120
+
+      - name: Request the status page
+        run: curl --fail --silent --show-error http://localhost:8000/ | grep "Open tasks"
+
+      - name: Show the logs if anything failed
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down --volumes

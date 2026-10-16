@@ -4,6 +4,13 @@ on:
   pull_request:
   push:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      verbosity:
+        description: "How much the test runner prints"
+        type: choice
+        options: ["1", "2", "3"]
+        default: "1"
 
 # A new push to a pull request cancels that pull request's older run.
 # Every other run gets a group of its own, so nothing cancels it.
@@ -58,7 +65,10 @@ jobs:
         run: python manage.py collectstatic --noinput
 
       - name: Run the tests
-        run: python manage.py test
+        env:
+          # Empty on push and pull_request runs, so fall back to 1.
+          VERBOSITY: ${{ inputs.verbosity || '1' }}
+        run: python manage.py test --verbosity "$VERBOSITY"
 
   docker:
     name: Docker smoke test

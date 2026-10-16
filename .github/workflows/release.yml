@@ -1,0 +1,35 @@
+name: Release
+
+# Pushing a version tag such as v0.1.0 runs the full CI first,
+# then publishes the Docker image to GitHub Container Registry.
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: Publish the Docker image
+    needs: ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Log in to GitHub Container Registry
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GITHUB_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      - name: Build and push the image
+        run: |
+          # Registry names must be lowercase, and usernames often aren't.
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          docker build --tag "$image:$GITHUB_REF_NAME" .
+          docker push "$image:$GITHUB_REF_NAME"

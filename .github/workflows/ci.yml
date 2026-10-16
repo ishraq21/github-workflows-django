@@ -52,3 +52,32 @@ jobs:
 
       - name: Run the tests
         run: python manage.py test
+
+  docker:
+    name: Docker smoke test
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Write a throwaway env file
+        run: |
+          cat > .env <<'ENV'
+          SECRET_KEY=ci-only-not-a-real-secret
+          POSTGRES_PASSWORD=ci-password
+          ALLOWED_HOSTS=localhost
+          ENV
+
+      - name: Build and start the stack
+        run: docker compose up --build --wait --wait-timeout 120
+
+      - name: Request the status page
+        run: curl --fail --silent --show-error http://localhost:8000/ | grep "Open tasks"
+
+      - name: Show the logs if anything failed
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down --volumes

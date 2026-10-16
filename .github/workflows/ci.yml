@@ -8,9 +8,23 @@ on:
 jobs:
   test:
     runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
-      # A throwaway key. CI only ever talks to a throwaway database.
+      # Throwaway values. CI only ever talks to a throwaway database.
       SECRET_KEY: ci-only-not-a-real-secret
+      DATABASE_URL: postgresql://postgres:ci-password@localhost:5432/app
     steps:
       - uses: actions/checkout@v7
 

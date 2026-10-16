@@ -1,0 +1,27 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Taskboard ({{ app_env }})</title>
+  <link rel="stylesheet" href="{% static 'pages/style.css' %}">
+</head>
+<body>
+  <main class="card">
+    <header>
+      <h1>Taskboard</h1>
+      <span class="badge badge-{{ app_env }}">{{ app_env }}</span>
+    </header>
+    <p class="lead">Running in Docker, served by Gunicorn, backed by PostgreSQL.</p>
+    <dl>
+      <div><dt>Django</dt><dd>{{ django_version }}</dd></div>
+      <div><dt>Python</dt><dd>{{ python_version }}</dd></div>
+      <div><dt>PostgreSQL</dt><dd>{{ db_version }}</dd></div>
+      <div><dt>Container</dt><dd><code>{{ hostname }}</code></dd></div>
+      <div><dt>Users in this database</dt><dd>{{ user_count }}</dd></div>
+      <div><dt>Open tasks</dt><dd>{{ open_tasks }}</dd></div>
+    </dl>
+    <footer><a href="/admin/">Open the admin</a><span>Demo data only</span></footer>
+  </main>
+</body>
+</html>

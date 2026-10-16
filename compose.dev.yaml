@@ -1,0 +1,12 @@
+# Development only. Use it with
+# docker compose -f compose.yaml -f compose.dev.yaml up
+services:
+  web:
+    # Skip the entrypoint and use Django's auto-reloading dev server.
+    entrypoint: []
+    command: python manage.py runserver 0.0.0.0:8000
+    environment:
+      DEBUG: "true"
+    volumes:
+      # Mount your code over /app, so edits show up right away.
+      - .:/app
